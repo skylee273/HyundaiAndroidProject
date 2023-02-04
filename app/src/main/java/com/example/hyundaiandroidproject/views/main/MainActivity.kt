@@ -1,30 +1,23 @@
 package com.example.hyundaiandroidproject.views.main
 
+import android.content.Intent
 import android.os.Bundle
 import android.os.PersistableBundle
-import android.view.View
-import androidx.appcompat.app.AppCompatActivity
 import com.example.hyundaiandroidproject.R
+import com.example.hyundaiandroidproject.base.BaseActivity
 import com.example.hyundaiandroidproject.databinding.ActivityMainBinding
+import com.example.hyundaiandroidproject.views.search.SearchActivity
 
-class MainActivity : AppCompatActivity(), View.OnClickListener {
-
-    private lateinit var binding : ActivityMainBinding
+class MainActivity : BaseActivity<ActivityMainBinding>(R.layout.activity_main){
 
     override fun onCreate(savedInstanceState: Bundle?, persistentState: PersistableBundle?) {
         super.onCreate(savedInstanceState, persistentState)
-        binding = ActivityMainBinding.inflate(layoutInflater)
-        setContentView(binding.root)
-        binding.btnActivityMainSearch.setOnClickListener(this)
-
+        binding.btnActivityMainSearch.setOnClickListener { moveSearchActivity() }
     }
 
-    override fun onClick(p0: View?) {
-        when (p0?.id){
-            R.id.btnActivityMainSearch -> {
-                // startActivity(Intent(this@MainActivity, SearchActivity::class.java))
-            }
-        }
+    private fun moveSearchActivity(){
+        startActivity(Intent(this@MainActivity, SearchActivity::class.java))
     }
+
 
 }
