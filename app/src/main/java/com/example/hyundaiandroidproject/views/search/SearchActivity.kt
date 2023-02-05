@@ -1,33 +1,28 @@
 package com.example.hyundaiandroidproject.views.search
 
 import android.annotation.SuppressLint
-import android.content.Intent
+import android.os.Bundle
+import android.os.PersistableBundle
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.SearchView
+import androidx.lifecycle.Observer
 import com.example.hyundaiandroidproject.R
 import com.example.hyundaiandroidproject.api.model.MovieEntity
-import com.example.hyundaiandroidproject.api.provideApi
 import com.example.hyundaiandroidproject.base.BaseActivity
 import com.example.hyundaiandroidproject.databinding.ActivitySearchBinding
-import com.example.hyundaiandroidproject.extentsion.plusAssign
 import com.jakewharton.rxbinding4.widget.queryTextChangeEvents
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
-import io.reactivex.rxjava3.core.Scheduler
-import io.reactivex.rxjava3.core.Single
-import io.reactivex.rxjava3.schedulers.Schedulers
-import java.lang.IllegalStateException
 
 
 class SearchActivity : BaseActivity<ActivitySearchBinding>(R.layout.activity_search), SearchAdapter.ItemClickListener{
 
     private lateinit var menuSearch: MenuItem
     private lateinit var searchView: SearchView
-
-    private val api by lazy {
-        provideApi()
+    private val viewModel: SearchViewModel by lazy {
+        binding.searchViewModel
     }
 
     private val adapter by lazy {
@@ -37,6 +32,10 @@ class SearchActivity : BaseActivity<ActivitySearchBinding>(R.layout.activity_sea
         }
     }
 
+    override fun onCreate(savedInstanceState: Bundle?, persistentState: PersistableBundle?) {
+        super.onCreate(savedInstanceState, persistentState)
+        initViewModelCallBack()
+    }
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         menuInflater.inflate(R.menu.menu_activity_search, menu)
         menuSearch = menu.findItem(R.id.menu_activity_search_query)
@@ -51,7 +50,7 @@ class SearchActivity : BaseActivity<ActivitySearchBinding>(R.layout.activity_sea
                 updateTitle(query)
                 hideSoftKeyboard()
                 collapseSearchView()
-                searchMovie(query)
+                binding.searchViewModel.searchMovie(query)
             }
 
         with(menuSearch) {
@@ -80,32 +79,26 @@ class SearchActivity : BaseActivity<ActivitySearchBinding>(R.layout.activity_sea
         return super.onOptionsItemSelected(item)
     }
 
-    @SuppressLint("NotifyDataSetChanged")
-    private fun searchMovie(query: String) {
-        compositeDisposable += api.getSearchMovie(query)
-            .flatMap {
-                if (it.total == 0) {
-                    Single.error(IllegalStateException("No Search result"))
-                } else {
-                    Single.just(it.movies)
+    private fun initViewModelCallBack() {
+        with(viewModel) {
+            serverMessage.observe(this@SearchActivity, Observer {
+                when (serverMessage.value) {
+                    SearchViewModel.MessageSet.LOADING -> {
+                        clearResults()
+                    }
+                    SearchViewModel.MessageSet.SUCCESS -> {
+                        with(adapter) {
+                            setMovieItems(movieList.value!!.toList())
+                            notifyDataSetChanged()
+                        }
+                    }
+                    else -> {
+
+                    }
                 }
-            }
-            .subscribeOn(Schedulers.newThread())
-            .observeOn(AndroidSchedulers.mainThread())
-            .doOnSubscribe{
-                clearResults()
-                hideError()
-                showProgress()
-            }
-            .doOnTerminate{ hideProgress()}
-            .subscribe({ itmes ->
-                with(adapter) {
-                    setMovieItems(items)
-                    notifyDataSetChanged()
-                }
-            }) {
-                showError(it.message ?: "No Message")
-            }
+            })
+        }
+
     }
 
     private fun updateTitle(query: String) {
@@ -127,27 +120,6 @@ class SearchActivity : BaseActivity<ActivitySearchBinding>(R.layout.activity_sea
         menuSearch.collapseActionView()
     }
 
-    private fun showProgress() {
-        binding.pbActivitySearch.visibility = View.VISIBLE
-    }
-
-    private fun hideProgress() {
-        binding.pbActivitySearch.visibility = View.GONE
-    }
-
-    private fun showError(message: String) {
-        with(binding.tvActivitySearchMessage) {
-            text = message ?: "Unexpected error."
-            visibility = View.VISIBLE
-        }
-    }
-
-    private fun hideError() {
-        with(binding.tvActivitySearchMessage) {
-            text = ""
-            visibility = View.GONE
-        }
-    }
 
     override fun onItemClick(repository: MovieEntity?) {
         // apply() 함수를 사용하여 객체 생성과 extra를 추가하는 작업을 동시에 수행한다.
