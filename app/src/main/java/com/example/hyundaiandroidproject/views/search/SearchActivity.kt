@@ -1,11 +1,14 @@
 package com.example.hyundaiandroidproject.views.search
 
+import android.annotation.SuppressLint
+import android.content.Intent
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.SearchView
 import com.example.hyundaiandroidproject.R
+import com.example.hyundaiandroidproject.api.model.MovieEntity
 import com.example.hyundaiandroidproject.api.provideApi
 import com.example.hyundaiandroidproject.base.BaseActivity
 import com.example.hyundaiandroidproject.databinding.ActivitySearchBinding
@@ -18,13 +21,20 @@ import io.reactivex.rxjava3.schedulers.Schedulers
 import java.lang.IllegalStateException
 
 
-class SearchActivity : BaseActivity<ActivitySearchBinding>(R.layout.activity_search) {
+class SearchActivity : BaseActivity<ActivitySearchBinding>(R.layout.activity_search), SearchAdapter.ItemClickListener{
 
     private lateinit var menuSearch: MenuItem
     private lateinit var searchView: SearchView
 
     private val api by lazy {
         provideApi()
+    }
+
+    private val adapter by lazy {
+        // apply() 함수를 사용하여 객체 생성과 함수 호출을 한번에 수행한다.
+        SearchAdapter().apply {
+            setItemClickListener(this@SearchActivity)
+        }
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
@@ -70,6 +80,7 @@ class SearchActivity : BaseActivity<ActivitySearchBinding>(R.layout.activity_sea
         return super.onOptionsItemSelected(item)
     }
 
+    @SuppressLint("NotifyDataSetChanged")
     private fun searchMovie(query: String) {
         compositeDisposable += api.getSearchMovie(query)
             .flatMap {
@@ -82,12 +93,16 @@ class SearchActivity : BaseActivity<ActivitySearchBinding>(R.layout.activity_sea
             .subscribeOn(Schedulers.newThread())
             .observeOn(AndroidSchedulers.mainThread())
             .doOnSubscribe{
+                clearResults()
                 hideError()
                 showProgress()
             }
             .doOnTerminate{ hideProgress()}
-            .subscribe({
-
+            .subscribe({ itmes ->
+                with(adapter) {
+                    setMovieItems(items)
+                    notifyDataSetChanged()
+                }
             }) {
                 showError(it.message ?: "No Message")
             }
@@ -133,4 +148,23 @@ class SearchActivity : BaseActivity<ActivitySearchBinding>(R.layout.activity_sea
             visibility = View.GONE
         }
     }
+
+    override fun onItemClick(repository: MovieEntity?) {
+        // apply() 함수를 사용하여 객체 생성과 extra를 추가하는 작업을 동시에 수행한다.
+       /* val intent = Intent(this, RepositoryActivity::class.java).apply {
+            putExtra(RepositoryActivity.KEY_USER_LOGIN, repository!!.owner.login)
+            putExtra(RepositoryActivity.KEY_REPO_NAME, repository.name)
+        }
+        startActivity(intent)*/
+    }
+
+    @SuppressLint("NotifyDataSetChanged")
+    private fun clearResults() {
+        // with() 함수를 사용하여 adapter 범위 내에서 작업을 수행한다.
+        with(adapter) {
+            clearItems()
+            notifyDataSetChanged()
+        }
+    }
+
 }
